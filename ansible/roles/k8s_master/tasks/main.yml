@@ -31,7 +31,7 @@
 
 - name: Install Calico CNI (pod networking)
   become_user: ubuntu
-  command: kubectl apply -f https://githubusercontent.com
+  command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/e49b8fd9d349b0465a261633f5f4788618d36301/master/getting-started/kubernetes/installation/hosted/calico.yaml
   environment:
     KUBECONFIG: /home/ubuntu/.kube/config
   when: not kubeadm_admin_conf.stat.exists
