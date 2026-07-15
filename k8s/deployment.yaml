@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab5-demo-app
+  labels:
+    app: lab5-demo-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: lab5-demo-app
+  template:
+    metadata:
+      labels:
+        app: lab5-demo-app
+  spec:
+    containers:
+      - name: web
+        image: nginxdemos/hello:latest
+        ports:
+          - containerPort: 80
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "128Mi"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
