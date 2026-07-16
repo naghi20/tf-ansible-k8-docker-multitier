@@ -1,13 +1,44 @@
 ---
-- name: Disable swap (required by kubelet)
-  command: swapoff -a
+- name: Check if swap file exists
+  ansible.builtin.stat:
+    path: /swapfile
+  register: swap_file_check
+
+- name: Create 2GB swap file space allocation (Required for low-RAM instances)
+  ansible.builtin.command: dd if=/dev/zero of=/swapfile bs=1M count=2048
+  when: not swap_file_check.stat.exists
+  changed_when: true
+
+- name: Secure swap file system permissions
+  ansible.builtin.file:
+    path: /swapfile
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Format the file as swap space
+  ansible.builtin.command: mkswap /swapfile
+  register: mkswap_result
+  when: not swap_file_check.stat.exists
+  changed_when: true
+
+- name: Query active system swap spaces
+  ansible.builtin.command: swapon --show
+  register: swapon_show
   changed_when: false
 
-- name: Remove swap entry from fstab
-  replace:
-    path: /etc/fstab
-    regexp: '^([^#].*\sswap\s.*)$'
-    replace: '# \1'
+- name: Activate the swap file immediately
+  ansible.builtin.command: swapon /swapfile
+  when: "'/swapfile' not in swapon_show.stdout"
+  changed_when: true
+
+- name: Ensure swap file persists across system reboots
+  ansible.builtin.mount:
+    name: none
+    src: /swapfile
+    fstype: swap
+    opts: sw
+    state: present
 
 - name: Load required kernel modules
   community.general.modprobe:
@@ -18,14 +49,15 @@
     - br_netfilter
 
 - name: Persist kernel modules across reboot
-  copy:
+  ansible.builtin.copy:
     dest: /etc/modules-load.d/k8s.conf
     content: |
       overlay
       br_netfilter
+    mode: '0644'
 
 - name: Set required sysctl params for Kubernetes networking
-  sysctl:
+  ansible.builtin.sysctl:
     name: "{{ item.name }}"
     value: "{{ item.value }}"
     sysctl_set: true
