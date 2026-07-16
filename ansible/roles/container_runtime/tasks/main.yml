@@ -1,33 +1,45 @@
 ---
 - name: Install containerd prerequisites
-  apt:
+  ansible.builtin.apt:
     name: [ca-certificates, curl, gnupg]
     state: present
     update_cache: true
 
 - name: Install containerd
-  apt:
+  ansible.builtin.apt:
     name: containerd
     state: present
 
 - name: Create containerd config directory
-  file:
+  ansible.builtin.file:
     path: /etc/containerd
     state: directory
+    mode: '0755'
 
 - name: Generate default containerd config
-  shell: containerd config default > /etc/containerd/config.toml
+  ansible.builtin.shell: containerd config default > /etc/containerd/config.toml
   args:
     creates: /etc/containerd/config.toml
 
-- name: Enable SystemdCgroup in containerd config (required for kubelet cgroup driver match)
-  replace:
+- name: Enable SystemdCgroup in containerd config
+  ansible.builtin.replace:
     path: /etc/containerd/config.toml
     regexp: 'SystemdCgroup = false'
     replace: 'SystemdCgroup = true'
 
-- name: Restart and enable containerd
-  systemd:
-    name: containerd
+- name: Configure kubelet to bypass swap and low memory restrictions
+  ansible.builtin.lineinfile:
+    path: /etc/default/kubelet
+    line: 'KUBELET_EXTRA_ARGS="--fail-swap-on=false --eviction-hard=imagefs.available<1%,memory.available<10Mi,nodefs.available<1%"'
+    create: yes
+    mode: '0644'
+
+- name: Restart system daemons
+  ansible.builtin.systemd:
+    name: "{{ item }}"
     state: restarted
+    daemon_reload: yes
     enabled: true
+  loop:
+    - containerd
+    - kubelet
