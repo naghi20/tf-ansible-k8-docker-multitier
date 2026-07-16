@@ -1,3 +1,4 @@
+markdown
 <img width="1600" height="900" alt="image" src="https://github.com/user-attachments/assets/f16591b9-91ec-46d5-ac92-f8c5c0819fd9" />
 
 # 🚀 Automated Kubernetes Bootstrapper: Kubeadm + Terraform + Ansible
