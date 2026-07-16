@@ -1,17 +1,19 @@
 markdown
 <img width="1600" height="900" alt="image" src="https://github.com/user-attachments/assets/f16591b9-91ec-46d5-ac92-f8c5c0819fd9" />
 
-# 🚀 Automated Kubernetes Bootstrapper: Kubeadm + Terraform + Ansible
+# DIY Kubernetes kubeadm Cluster Bootstrapper (AWS + Terraform + Ansible)
 
-This repository delivers an end-to-end sandbox platform designed to help Cloud Engineers and DevOps Architects master the internals of Kubernetes lifecycle management. By decomposing the process into Infrastructure as Code (IaC) and declarative Configuration Management, you will explore exactly what managed provider layers (such as AWS EKS) engineer behind the scenes.
+This repository contains a full hands-on lab infrastructure layout designed to help platform engineers understand exactly what managed services like EKS, GKE, or AKS handle under the hood. 
 
-The orchestration workflow provisions enterprise-grade, low-cost raw **AWS EC2 Compute Nodes via Terraform**, dynamic layout inventory maps, and launches structured **Ansible Playbooks** to wire up system dependencies, configure container engines, and configure a resilient, lightweight **Flannel CNI** control plane.
+Using **Terraform**, the project provisions raw AWS EC2 computing nodes and generates a dynamic inventory tracking map. It then orchestrates **Ansible** playbooks to completely configure the low-level operating system components, configure container runtimes, initialize a highly stable **kubeadm** control plane with swap memory accommodations, and roll out a lightweight **Flannel CNI** plugin layer.
 
+---
 
-## 🏗️ Architecture Blueprint & Execution Pipeline
+## 🏗️ End-to-End System Architecture
 
-The automated infrastructure environment lifecycle operates seamlessly across three operational phases:
+The automated lifecycle operates across three distinct execution phases:
 
+```text
 +-----------------------------------------------------------------------------------+
 
 |                            LOCAL WORKSPACE (CONTROL NODE)                         |
@@ -32,7 +34,7 @@ The automated infrastructure environment lifecycle operates seamlessly across th
 
 |                                  AWS TARGET VPC                                   |
 |                                                                                   |
-|      +----------------─────────────────────────────────────────────────────+      |
+|      +--------------------------------─────────────────────────────────────+      |
 |      |                  Isolated Security Group (lab5-k8s-sg)               |      |
 |      |                                                                     |      |
 |      |   +----------------------------+     +---------------------------+   |      |
@@ -51,17 +53,15 @@ The automated infrastructure environment lifecycle operates seamlessly across th
                                                        (Access via http://IP:30080)
 ```
 
-```
-
-1. **Declarative Cloud Provisioning (Terraform)**: Assembles decoupled AWS instances mapped over matching operational security boundaries, exposing internal interfaces for Kubernetes cluster transport and NodePort services.
-2. **Environment Discovery Pipeline**: Terraform compiles operational instances dynamically, passing target configurations straight to production-ready variable blueprints (`ansible/inventory.ini`).
-3. **Cluster Engine Initialization (Ansible)**: Installs `containerd`, aligns core system systemd settings, triggers multi-node node boots, handles control components, and registers compute workers securely.
+1. **Infrastructure as Code (Terraform)**: Builds 1x Master EC2 instance and Nx Worker instances using an Ubuntu server baseline. It locks them behind a shared Security Group allowing cluster communication, SSH management, and external application ingress. 
+2. **Configuration Handoff**: Terraform writes the target cloud properties dynamically into a local `ansible/inventory.ini` template layout file upon successful resource creation.
+3. **Cluster Bootstrapping (Ansible)**: Installs `containerd` using matched systemd cgroups, hardcodes local `kubelet` environment variables to tolerate tiny low-memory instances via swap file allocation, executes `kubeadm init`, configures a lightweight `Flannel` CNI overlay, and hooks your workers cleanly into the cluster.
 
 ---
 
-## 📁 Repository Blueprint Layout
+## 📁 Repository Directory Layout
 
-``
+```text
 .
 ├── terraform/                  # Infrastructure as Code Workspace
 │   ├── main.tf                 # EC2 Resource definitions & Inventory compiler
@@ -81,14 +81,14 @@ The automated infrastructure environment lifecycle operates seamlessly across th
 └── k8s/                        # Native Kubernetes YAML Manifest Files
     ├── deployment.yaml         # 3-replica Nginx application payload
     └── service.yaml            # Exposes workload on NodePort 30080
-`
+```
 
+---
 
+## 🛠️ Step-by-Step Lab Execution Flow
 
-## 🛠️ Step-by-Step Production Run Guide
-
-### Phase 1: Provision Hardware Layout with Terraform
-Initialize provider settings, compile resource targets, and deploy compute components:
+### Phase 1: Provision Infrastructure with Terraform
+Navigate to the terraform workspace, pull down the required hashing providers, and execute your build plan:
 ```bash
 cd terraform
 terraform init
@@ -97,23 +97,25 @@ terraform apply \
   -var="private_key_path=\$HOME/.ssh/your-aws-ssh-key-name.pem" \
   -var="worker_count=2"
 ```
+*This step automatically outputs your cluster server endpoints and creates your custom `../ansible/inventory.ini` mapping parameters block.*
 
-### Phase 2: Cluster Setup Orchestration via Ansible
-Return to your cluster management workspace, satisfy dependencies, and trigger setup playbooks:
+### Phase 2: Orchestrate the Systems with Ansible
+Return to your cluster automation folder, install your repository dependencies, and launch your automated playbook run:
 ```bash
 cd ../ansible
 ansible-galaxy collection install -r requirements.yml
 ansible-playbook site.yml
 ```
+*Ansible handles swap files, matches your cgroup drivers, configures your upstream repos, spins up your cluster master core, configures Flannel, extracts tokens, and cleanly loops your worker targets into place.*
 
-### Phase 3: Cluster Connection & Application Deploy
-Map your local administrative session context properties directly to your production cluster's fresh orchestration keys:
+### Phase 3: Connect and Deploy Your Manifests
+Point your local management session straight at the freshly fetched automated cluster verification certificate file:
 ```bash
 export KUBECONFIG=\$(pwd)/generated/kubeconfig
 kubectl get nodes -o wide
 ```
 
-Spin up your test application services and expose your cluster ingress configs:
+Apply your native Nginx application manifests layer into production:
 ```bash
 kubectl apply -f ../k8s/deployment.yaml
 kubectl apply -f ../k8s/service.yaml
@@ -121,20 +123,24 @@ kubectl apply -f ../k8s/service.yaml
 
 ---
 
-## 🔍 Validation Checkpoints
+## 🔍 Post-Deployment Cluster Validation
 
-Confirm that your deployment environment layer has achieved operational readiness:
+Run these commands to confirm that your automated infrastructure is completely operational:
 
-* **Node Status**: Check health states with `kubectl get nodes` to ensure master and workers report `Ready`.
-* **Network Fabrics**: Run `kubectl get pods -n kube-system` to guarantee your CoreDNS and Flannel elements are fully `Running`.
-* **Application Ingress**: Check cluster load behaviors by querying node addresses directly on the target public port line: `curl http://<EC2-PUBLIC-IP>:30080`.
+* **Validate Node States**: Run `kubectl get nodes` to confirm your infrastructure pool reports a healthy `Ready` status.
+* **Validate Network Stability**: Run `kubectl get pods -n kube-system` to guarantee your CoreDNS and Flannel pods have cleanly entered a `Running 1/1` loop status.
+* **Validate Web Access**: Access your application by hitting any master or worker node public IP on your NodePort target: `curl http://<ANY-EC2-PUBLIC-IP>:30080`.
 
 ---
 
-## 🧼 Tear Down & Cleanup
+## 🧹 Automated Cloud Resource Cleanup
 
-Avoid unexpected infrastructure costs by deleting resources through Terraform when your lab session concludes:
+To prevent any unexpected charges pile up on your AWS billing statement after finishing the lab exercises, completely wipe your provisions using Terraform:
 ```bash
 cd ../terraform
-terraform destroy -auto-approve
+terraform destroy \
+  -var="key_name=your-aws-ssh-key-name" \
+  -var="private_key_path=\$HOME/.ssh/your-aws-ssh-key-name.pem" \
+  -var="worker_count=2"
+  -auto-approve
 ```
